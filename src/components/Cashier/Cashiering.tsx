@@ -1,6 +1,50 @@
+import * as React from "react";
+import {
+  styled,
+  createTheme,
+  ThemeProvider,
+  createMuiTheme,
+} from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import MuiDrawer from "@mui/material/Drawer";
+import Box from "@mui/material/Box";
+import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import List from "@mui/material/List";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import Container from "@mui/material/Container";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import { useAuth } from "../AccountLoginValid/AuthContext";
+import { useEffect, useState,  useRef, useSyncExternalStore, } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import {
   Button,
-  Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+} from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import LogoutIcon from "@mui/icons-material/Logout";
+import {
+  AddShoppingCart,
+  ManageAccounts,
+  Menu,
+} from "@mui/icons-material";
+import { ToastContainer, toast } from "react-toastify";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import "./CSS FIles/TransactionHistory.css";
+import MenuIcon from '@mui/icons-material/Menu';
+import ViewTransactionLink from "./ViewTransactionLink";
+
+//CASHIER IMPORTS
+import {
   Table,
   TableBody,
   TableCell,
@@ -8,44 +52,111 @@ import {
   TableHead,
   TableRow,
   TextField,
-  styled,
   tableCellClasses,
-  Drawer,
-  IconButton,
-  List,
   ListItem,
-  Typography,
 } from "@mui/material";
-import { Link, useLocation } from "react-router-dom";
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useSyncExternalStore,
-} from "react";
-import axios from "axios";
 import { Product, RestProduct } from "../REST/REST Product/RestProduct";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useReactToPrint } from "react-to-print";
 import { ComponentToPrint } from "./ComponentToPrint";
-import MenuIcon from "@mui/icons-material/Menu"; // Import the MenuIcon
 import "./CSS FIles/Cashiering.css";
 import perform_transaction from "./Images/perform_transaction.png";
 import transaction_history from "./Images/transaction_history.png";
 import logout from "./Images/logout.png";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../AccountLoginValid/AuthContext";
-import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const initialSelectedProducts = [];
+const initialSelectedProducts: any[] | (() => any[]) = [];
 const url = "http://localhost:8080/product/getAllProduct";
 const post_transaction = "http://localhost:8080/transaction/postTransaction";
 
+
+//CASHIERING ADDED
+
+const drawerWidth: number = 300;
+
+interface AppBarProps extends MuiAppBarProps {
+  open?: boolean;
+}
+
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== "open",
+})<AppBarProps>(({ theme, open }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  transition: theme.transitions.create(["width", "margin"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    marginLeft: drawerWidth,
+    width: `calc(100% - ${drawerWidth}px)`,
+    transition: theme.transitions.create(["width", "margin"], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}));
+
+const Drawer = styled(MuiDrawer, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }) => ({
+  "& .MuiDrawer-paper": {
+    position: "relative",
+    whiteSpace: "nowrap",
+    width: drawerWidth,
+    transition: theme.transitions.create("width", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    boxSizing: "border-box",
+    ...(!open && {
+      overflowX: "hidden",
+      transition: theme.transitions.create("width", {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.leavingScreen,
+      }),
+      width: theme.spacing(7),
+      [theme.breakpoints.up("sm")]: {
+        width: theme.spacing(9),
+      },
+    }),
+  },
+}));
+
 export default function Cashiering() {
-  const { isCashierLoggedIn } = useAuth();
+
+
+  const [open, setOpen] = React.useState(true);
+
+  const { isCashierLoggedIn, setIsCashierLoggedIn, cashierUser } = useAuth();
   const navigate = useNavigate();
 
+  // Token
+  useEffect(() => {
+    const token = localStorage.getItem("cashierLoggedIn");
+    if (!token) {
+      navigate("/logincash");
+    } else {
+      setIsCashierLoggedIn(true);
+      axios
+        .get("http://localhost:8080/transaction/getAllTransaction")
+        .then((response) => {
+          console.log(localStorage.getItem("cashierBusinessName"));
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  }, [isCashierLoggedIn, navigate, cashierUser]);
+
+  const themeDilven = createTheme({
+    palette: {
+      primary: {
+        main: "#1D7D81",
+      },
+    },
+  });
+
+  //CASHIERING ADDED
   useEffect(() => {
     const token = localStorage.getItem("cashierToken");
 
@@ -55,7 +166,7 @@ export default function Cashiering() {
     }
   }, [isCashierLoggedIn, navigate]);
 
-  <title>Cashiering</title>;
+   <title>Cashiering</title>;
   const [deleteByID, getProductByID, editProduct, addProduct, product] =
     RestProduct();
   const [products, setProduct] = useState([product]);
@@ -63,7 +174,8 @@ export default function Cashiering() {
   const [selectedProducts, setSelectedProducts] = useState(
     initialSelectedProducts
   );
-  const [initialProductQuantities, setInitialProductQuantities] = useState({});
+  //const [initialProductQuantities, setInitialProductQuantities] = useState({});
+  const [initialProductQuantities, setInitialProductQuantities] = React.useState<{ [key: string]: number }>({});
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const location = useLocation();
 
@@ -76,156 +188,146 @@ export default function Cashiering() {
   const [customer_num, setCustomer_num] = useState("");
   const [customer_email, setCustomer_email] = useState("");
   const [date_time, setDate_time] = useState("");
+ 
+    //Fetch Product Table from Database
+    useEffect(() => {
+      const fetchData = async () => {
+        try {
+          const response = await axios.get(url);
+          const data = response.data;
+          setProduct(data);
+  
+          // Initialize the cart state
+          setCart([]);
+  
+          // Initialize the selected products state
+          setSelectedProducts([]);
+        } catch (error) {
+          console.error(error);
+        }
+      };
+      fetchData();
+    }, []);
 
-  // Function to open the Drawer
-  const openDrawer = () => {
-    setIsDrawerOpen(true);
-  };
-
-  // Function to close the Drawer
-  const closeDrawer = () => {
-    setIsDrawerOpen(false);
-  };
-
-  //Fetch Product Table from Database
-  useEffect(() => {
-    const fetchData = async () => {
+    const decreaseProductQuantityInDatabase = async (
+      productid: any,
+      quantityToDecrease: any
+    ) => {
+      if (quantityToDecrease === undefined) {
+        console.error("Quantity to decrease is undefined.");
+        return;
+      }
+  
       try {
-        const response = await axios.get(url);
-        const data = response.data;
-        setProduct(data);
+        // Make an HTTP request to update the product quantity in the database
+        await axios.put(
+          `http://localhost:8080/product/decreaseQuantity/${productid}?quantityToDecrease=${quantityToDecrease}`
+        );
+      } catch (error) {
+        console.error(error);
+      }
+    };  
 
-        // Initialize the cart state
-        setCart([]);
-
-        // Initialize the selected products state
-        setSelectedProducts([]);
+    const incrementPurchaseCount = async (productid: any, quantityPurchased: any) => {
+      try {
+        // Make an HTTP request to increment the purchase count in the database for the specified product
+        await axios.put(
+          `http://localhost:8080/product/incrementPurchaseCount/${productid}?quantityPurchased=${quantityPurchased}`
+        );
       } catch (error) {
         console.error(error);
       }
     };
-    fetchData();
-  }, []);
-
-  const decreaseProductQuantityInDatabase = async (
-    productid,
-    quantityToDecrease
-  ) => {
-    if (quantityToDecrease === undefined) {
-      console.error("Quantity to decrease is undefined.");
-      return;
-    }
-
-    try {
-      // Make an HTTP request to update the product quantity in the database
-      await axios.put(
-        `http://localhost:8080/product/decreaseQuantity/${productid}?quantityToDecrease=${quantityToDecrease}`
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const incrementPurchaseCount = async (productid, quantityPurchased) => {
-    try {
-      // Make an HTTP request to increment the purchase count in the database for the specified product
-      await axios.put(
-        `http://localhost:8080/product/incrementPurchaseCount/${productid}?quantityPurchased=${quantityPurchased}`
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const record_transaction = async () => {
-    if (!tendered_bill) {
-      toast.error(
-        "Tendered bill cannot be empty. Please enter a valid amount.",
-        {
-          position: "top-center",
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-        }
-      );
-      return;
-    }
-
-    if (parseFloat(tendered_bill) < total_price) {
-      toast.error(
-        "Insufficient amount. Please enter an amount equal to or greater than the total price.",
-        {
-          position: "top-center",
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "colored",
-        }
-      );
-      return;
-    }
-    const isReadyToPay = window.confirm(
-      "Are you sure you want to proceed with the payment?"
-    );
-
-    if (isReadyToPay) {
-      for (const productid of selectedProducts) {
-        const productInCart = cart.find((item) => item.productid === productid);
-        if (productInCart) {
-          const quantityPurchased = productInCart.quantity;
-
-          // Decrease the product quantity in the database by the exact quantity purchased
-          await decreaseProductQuantityInDatabase(productid, quantityPurchased);
-
-          // Increment the purchase count for the product
-          await incrementPurchaseCount(productid, quantityPurchased);
-        }
+    
+    const record_transaction = async () => {
+      if (!tendered_bill) {
+        toast.error(
+          "Tendered bill cannot be empty. Please enter a valid amount.",
+          {
+            position: "top-center",
+            autoClose: 2000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+          }
+        );
+        return;
       }
+  
+      if (parseFloat(tendered_bill) < total_price) {
+        toast.error(
+          "Insufficient amount. Please enter an amount equal to or greater than the total price.",
+          {
+            position: "top-center",
+            autoClose: 2000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+          }
+        );
+        return;
+      }
+      const isReadyToPay = window.confirm(
+        "Are you sure you want to proceed with the payment?"
+      );
+  
+      if (isReadyToPay) {
+        for (const productid of selectedProducts) {
+          const productInCart = cart.find((item) => item.productid === productid);
+          if (productInCart) {
+            const quantityPurchased = productInCart.quantity;
+  
+            // Decrease the product quantity in the database by the exact quantity purchased
+            await decreaseProductQuantityInDatabase(productid, quantityPurchased);
+  
+            // Increment the purchase count for the product
+            await incrementPurchaseCount(productid, quantityPurchased);
+          }
+        }
+  
+        // Axios post to create record transaction
+        axios
+          .post(post_transaction, {
+            total_quantity: total_quantity,
+            total_price: total_price,
+            tendered_bill: tendered_bill,
+            balance: balance,
+            customer_name: customer_name,
+            customer_num: customer_num,
+            customer_email: customer_email,
+            date_time: date_time,
+            product: selectedProducts.map((productid) => ({
+              productid: productid,
+            })),
+          })
+          .then((res) => {
+            console.log(res.data);
+            alert("Transaction Complete");
+            handlePrint();
+          })
+          .catch((err) => console.log(err));
+      }
+    };  
 
-      // Axios post to create record transaction
-      axios
-        .post(post_transaction, {
-          total_quantity: total_quantity,
-          total_price: total_price,
-          tendered_bill: tendered_bill,
-          balance: balance,
-          customer_name: customer_name,
-          customer_num: customer_num,
-          customer_email: customer_email,
-          date_time: date_time,
-          product: selectedProducts.map((productid) => ({
-            productid: productid,
-          })),
-        })
-        .then((res) => {
-          console.log(res.data);
-          alert("Transaction Complete");
-          handlePrint();
-        })
-        .catch((err) => console.log(err));
-    }
-  };
-
-  // Styling the Product Table
-  const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    [`&.${tableCellClasses.head}`]: {
-      backgroundColor: theme.palette.common.black,
-      fontSize: 15,
-      color: theme.palette.common.white,
-    },
-    [`&.${tableCellClasses.body}`]: {
-      fontSize: 15,
-    },
-  }));
-
-  // Fetch product quantities from the database during the initial product fetch
+    // Styling the Product Table
+    const StyledTableCell = styled(TableCell)(({ theme }) => ({
+      [`&.${tableCellClasses.head}`]: {
+        backgroundColor: theme.palette.common.black,
+        fontSize: 15,
+        color: theme.palette.common.white,
+      },
+      [`&.${tableCellClasses.body}`]: {
+        fontSize: 15,
+      },
+    }));
+    
+      // Fetch product quantities from the database during the initial product fetch
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -234,8 +336,8 @@ export default function Cashiering() {
         setProduct(data);
 
         // Store the initial product quantities
-        const initialQuantities = {};
-        data.forEach((product) => {
+        const initialQuantities: { [key: string]: number } = {};
+        data.forEach((product: any) => {
           initialQuantities[product.productid] = product.quantity;
         });
         setInitialProductQuantities(initialQuantities);
@@ -247,7 +349,7 @@ export default function Cashiering() {
   }, []);
 
   // Function to add a selected product ID to the state
-  const addProductToSelection = (productid) => {
+  const addProductToSelection = (productid: any) => {
     if (!selectedProducts.includes(productid)) {
       setSelectedProducts([...selectedProducts, productid]);
       // Check if the quantity of the selected product is not zero
@@ -258,8 +360,9 @@ export default function Cashiering() {
       }
     }
   };
-  // Add to cart table
-  const addProductToCart = async (product) => {
+  
+   // Add to cart table
+   const addProductToCart = async (product: any) => {
     const productExist = cart.find(
       (item) => item?.productid === product?.productid
     );
@@ -289,10 +392,10 @@ export default function Cashiering() {
         setCart([...cart, newProduct]);
       }
     }
-  };
+  }; 
 
-  // Removes the item from the cart
-  const removeProduct = async (product) => {
+   // Removes the item from the cart
+   const removeProduct = async (product: any) => {
     const newCart = cart.filter(
       (cart) => cart?.productid !== product.productid
     );
@@ -302,7 +405,7 @@ export default function Cashiering() {
     );
   };
 
-  const decreaseQuantity = async (product) => {
+  const decreaseQuantity = async (product: any) => {
     const productExist = cart.find(
       (item) => item?.productid === product?.productid
     );
@@ -380,9 +483,9 @@ export default function Cashiering() {
     const formattedDateTime = now.toLocaleString(); // You can customize the format using options
     return formattedDateTime;
   };
-
-  // Update the date_time value with the current date and time at regular intervals
-  useEffect(() => {
+  
+   // Update the date_time value with the current date and time at regular intervals
+   useEffect(() => {
     const updateDateTime = () => {
       const currentDateTime = getCurrentDateTime();
       setDate_time(currentDateTime);
@@ -399,7 +502,7 @@ export default function Cashiering() {
     };
   }, []);
 
-  const componentRef = useRef();
+  const componentRef = React.useRef<any>();
 
   const handleReactToPrint = useReactToPrint({
     content: () => componentRef.current,
@@ -414,114 +517,180 @@ export default function Cashiering() {
   const filteredProducts = products.filter((product) =>
     product?.productname.toLowerCase().includes(searchQuery.toLowerCase())
   );
+ 
+
+  //UNTIL HERE
+
+  // Logout Function
+  const [openLogout, setOpenLogout] = React.useState(false);
+  const handleClickOpenLogout = () => {
+    setOpenLogout(true);
+  };
+  const handleClickCloseLogout = () => {
+    setOpenLogout(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("cashierToken");
+    localStorage.removeItem("cashierLoggedIn");
+    localStorage.removeItem("cashierUsername");
+    localStorage.removeItem("cashierBusinessName");
+    navigate("/logincash");
+  };
 
   return (
-    <div className="container">
-      {/* Hamburger icon to open the drawer */}
-      <IconButton
-        edge="end"
-        aria-label="open drawer"
-        onClick={openDrawer}
-        sx={{
-          position: "fixed",
-          top: ".5rem",
-          right: "2rem",
-          fontSize: "6rem",
-          zIndex: 999,
-        }}
-      >
-        <MenuIcon sx={{ fontSize: "3rem" }} />{" "}
-        {/* Place the MenuIcon component here */}
-      </IconButton>
-      {/* Drawer component */}
-      <Drawer
-        anchor="right"
-        open={isDrawerOpen}
-        onClose={closeDrawer}
-        sx={{ width: "5rem" }}
-      >
-        <div className="drawer-account">
-          <Typography
+    <ThemeProvider theme={themeDilven}>
+      <Box sx={{ display: "flex" }}>
+        <CssBaseline />
+        <AppBar position="absolute" open={open}>
+          <Toolbar
             sx={{
-              fontFamily: "Poppins",
-              fontWeight: "bold",
-              color: "white",
-              fontSize: 25,
-              textAlign: "center",
+              pr: "24px",
             }}
           >
-            Cashier
-          </Typography>
-        </div>
-        <List>
-          <ListItem
-            button
-            component={Link}
-            to="/cashiering"
-            className={location.pathname === "/cashiering" ? "active-link" : ""}
-          >
-            <h2
-              style={{
-                fontFamily: "Poppins",
-                fontSize: 25,
-                fontWeight: "bold",
-                color: "#213458",
-                padding: 2,
-                margin: "auto",
-                marginLeft: 5,
-                marginRight: 30,
-              }}
+            <Typography
+              component="h1"
+              variant="h4"
+              color="inherit"
+              noWrap
+              sx={{ flexGrow: 1 }}
             >
               Perform Transaction
-            </h2>
-            <img src={perform_transaction} className="img_cashiering" />
-          </ListItem>
+            </Typography>
 
-          <ListItem
-            button
-            component={Link}
-            to="/transactionhistory"
-            className={
-              location.pathname === "/transactionhistory" ? "active-link" : ""
-            }
-          >
-            <h2
-              style={{
-                fontFamily: "Poppins",
-                fontSize: 25,
-                fontWeight: "bold",
-                padding: 2,
-                margin: "auto",
-                marginRight: 40,
-                marginLeft: 5,
-              }}
+            <Typography
+              component="h1"
+              variant="h4"
+              color="inherit"
+              noWrap
+              sx={{ flexGrow: 1 }}
             >
-              Transaction History
-            </h2>
-            <img src={transaction_history} className="img_cashiering" />
-          </ListItem>
+              <span
+                className="nav-user"
+                style={{ float: "right", marginRight: 10 }}
+              >
+                <IconButton color="inherit">
+                  <AccountCircleIcon sx={{ fontSize: 30 }} />
+                </IconButton>
+                {localStorage.getItem("cashierUsername")}
+              </span>
+            </Typography>
+          </Toolbar>
+        </AppBar>
 
-          <ListItem
-            className={location.pathname === "/logout" ? "active-link" : ""}
+        <Drawer variant="permanent" open={open}>
+          <Toolbar
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "20px",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#4BB543",
+              px: [1],
+            }}
           >
-            <h2
-              style={{
-                fontFamily: "Poppins",
-                fontSize: 25,
-                fontWeight: "bold",
-                color: "#213458",
-                padding: 2,
-                marginRight: 200,
-                marginLeft: 5,
-              }}
-            >
-              Log Out
-            </h2>
-            <img src={logout} className="img_cashiering" />
-          </ListItem>
-        </List>
-      </Drawer>
+            {localStorage.getItem("cashierUsername")}{" "}
+            {/* Display Business Name */}
+          </Toolbar>
+          <Divider />
+          <List component="nav">
+            <Link to="/#" className="side-nav">
+              <IconButton color="inherit">
+                <HomeIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+              <Button>Home</Button>
+            </Link>
 
+            <Link to="/cashier-main" className="side-nav">
+              <IconButton color="inherit">
+                <Menu sx={{ fontSize: 15 }} />
+              </IconButton>
+              <Button>Cashier Main</Button>
+            </Link>
+
+            <Link to="/cashiering" 
+              style={{ backgroundColor: "#AFE1AF" }}
+              className="side-nav">
+              <IconButton color="inherit">
+                <AddShoppingCart sx={{ fontSize: 15 }} />
+              </IconButton>
+              <Button>Perform Transaction</Button>
+            </Link>
+
+            <Link
+              to="/transactionhistory"
+              className="side-nav"
+            >
+              <IconButton color="inherit">
+                <ManageAccounts sx={{ fontSize: 15 }} />
+              </IconButton>
+              <Button>Transactions</Button>
+            </Link>
+
+            <Link onClick={handleClickOpenLogout} to="" className="side-nav">
+              <IconButton color="inherit">
+                <LogoutIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+              <Button>Logout</Button>
+            </Link>
+
+            <Dialog open={openLogout} onClose={handleClickCloseLogout}>
+              <DialogTitle
+                sx={{ fontSize: "1.6rem", color: "red", fontWeight: "bold" }}
+              >
+                Warning!
+              </DialogTitle>
+              <DialogContent>
+                <DialogContentText sx={{ fontSize: "1.6rem" }}>
+                  Are you sure you want to logout?
+                </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                <Button
+                  sx={{ fontSize: "15px", fontWeight: "bold" }}
+                  onClick={handleClickCloseLogout}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  sx={{ fontSize: "15px", fontWeight: "bold" }}
+                  onClick={handleLogout}
+                >
+                  Confirm
+                </Button>
+              </DialogActions>
+            </Dialog>
+          </List>
+        </Drawer>
+
+        <Box
+          component="main"
+          sx={{
+            backgroundColor: (theme) =>
+              theme.palette.mode === "light"
+                ? theme.palette.grey[100]
+                : theme.palette.grey[900],
+            flexGrow: 1,
+            height: "100vh",
+            overflow: "auto",
+          }}
+        >
+          <Toolbar />
+          <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    display: "flex",
+                    flexDirection: "column",
+                    fontSize: 15,
+                    fontFamily: "sans-serif",
+                  }}
+                  style={{ height: 800 }}
+                >
+      <div>
       {/*Search Bar */}
       <input
         type="text"
@@ -613,7 +782,7 @@ export default function Cashiering() {
           )}
           <hr></hr>
         </div>
-
+  
         {/* Display Cashiering */}
         <div className="col-lg-5">
           <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
@@ -761,7 +930,7 @@ export default function Cashiering() {
             />
           </div>
         </div>
-
+  
         <div className="col-lg-4">
           <div>
             <h2>
@@ -855,5 +1024,20 @@ export default function Cashiering() {
         style={{ width: "500px", fontSize: 15 }}
       />
     </div>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Container>
+        </Box>
+      </Box>
+      <ToastContainer
+        className="foo"
+        style={{ width: "600px", fontSize: 15 }}
+      />
+    </ThemeProvider>
   );
 }
+function handlePrint() {
+  throw new Error("Function not implemented.");
+}
+
